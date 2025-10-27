@@ -1,6 +1,7 @@
 import telebot
 import json
 import os
+import logging
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 565812291
@@ -163,6 +164,7 @@ if __name__ == '__main__':
     print("Bot iniciado e escutando...")
     # Inicia o loop de polling que mantém o bot ativo
     bot.infinity_polling()
+
 
 
 
