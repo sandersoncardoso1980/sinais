@@ -204,7 +204,8 @@ def sinais_admin(msg):
 # Rota principal para verificar se o bot está vivo
 @app.route('/', methods=['GET', 'HEAD'])
 def index():
-    return 'OK', 200
+    logging.info("Raiz acessada! Tudo vivo aqui.")  # Log pro Render
+    return 'Bot OK e pronto pro Telegram! 🚀', 200
 
 # Rota que o Telegram vai chamar com as atualizações
 @app.route(f'/{BOT_TOKEN}', methods=['POST'])
@@ -245,4 +246,5 @@ if __name__ == '__main__':
         # Para teste local, descomente as duas linhas abaixo:
         # threading.Thread(target=lambda: app.run(host="0.0.0.0", port=PORT)).start()
         pass
+
 
