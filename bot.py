@@ -128,14 +128,13 @@ def sinais_admin(msg):
 
     raw_text = msg.text.partition(" ")[2].strip()
     if not raw_text:
-        bot.reply_to(msg, "Use: /sinaisadmin SINAL1;SINAL2;SINAL3 (separe por ';' ou por quebras de linha)")
+        bot.reply_to(msg, "Use: /sinaisadmin SINAL1\nSINAL2\nSINAL3 (envie um sinal por linha)")
         return
 
     # Tentamos primeiro por ';', se não existir, por linhas
-    if ";" in raw_text:
-        lista = [s.strip() for s in raw_text.split(";") if s.strip()]
-    else:
-        lista = [s.strip() for s in raw_text.splitlines() if s.strip()]
+    # Processa a lista de sinais, considerando um sinal por linha
+    lista = [s.strip() for s in raw_text.splitlines() if s.strip()]
+
 
     global ultimos_sinais
     ultimos_sinais = lista
@@ -164,6 +163,7 @@ if __name__ == '__main__':
     print("Bot iniciado e escutando...")
     # Inicia o loop de polling que mantém o bot ativo
     bot.infinity_polling()
+
 
 
 
