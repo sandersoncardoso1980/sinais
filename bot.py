@@ -5,7 +5,8 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Configurações do bot
-BOT_TOKEN = "7705926836:AAFBvmXyzrnQN9Lrtp3TUwvc-S-49vnisHA"
+import os
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 565812291  # teu ID do Telegram
 assinantes = {}  # {user_id: {"ativo": True/False, "nome": str}}
 free_users = set()
@@ -211,3 +212,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
