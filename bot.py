@@ -157,5 +157,14 @@ def sinais_admin(msg):
             logging.exception(f"Erro ao enviar preview para {uid}")
 
     bot.reply_to(msg, "✅ Sinais processados e enviados.")
+    # ... (código existente)
+
+if __name__ == '__main__':
+    carregar_assinantes() # Carrega os dados antes de iniciar o bot
+    print("Bot iniciado e escutando...")
+    # Inicia o loop de polling que mantém o bot ativo
+    bot.infinity_polling()
+
+
 
 
