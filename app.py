@@ -15,7 +15,7 @@ PORT = int(os.environ.get('PORT', 5000))
 
 # --- Validação ---
 if not BOT_TOKEN:
-    raise ValueError("ERRO: BOT_TOKEN não definido!")
+    raise ValueError("ERRO: BOT_TOKEN não definido no ambiente!")
 
 # --- Inicialização ---
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -48,7 +48,7 @@ def carregar_assinantes():
         except Exception as e:
             logging.error(f"Erro ao carregar: {e}")
     else:
-        logging.info("Nenhum arquivo de assinantes.")
+        logging.info("Nenhum arquivo de assinantes encontrado.")
 
 # --- Comandos ---
 @bot.message_handler(commands=["start"])
@@ -187,7 +187,7 @@ def sinais_admin(msg):
 
     bot.reply_to(msg, f"✅ {len(lista)} sinais enviados\\.", parse_mode="MarkdownV2")
 
-# --- Flask ---
+# --- Flask Routes ---
 @app.route('/', methods=['GET', 'HEAD'])
 def index():
     logging.info("Raiz acessada — servidor vivo!")
@@ -198,7 +198,7 @@ def webhook():
     if flask.request.headers.get('content-type') == 'application/json':
         json_string = flask.request.get_data().decode('utf-8')
         update = telebot.types.Update.de_json(json_string)
-        logging.info(f"Update: {update.message.text if update.message else 'sem texto'}")
+        logging.info(f"Update recebido: {update.message.text if update.message else 'sem texto'}")
         bot.process_new_updates([update])
         return '!', 200
     flask.abort(403)
@@ -208,7 +208,7 @@ carregar_assinantes()
 
 if __name__ == '__main__':
     if not WEBHOOK_URL_BASE:
-        logging.warning("WEBHOOK_URL_BASE ausente → polling local")
+        logging.warning("WEBHOOK_URL_BASE ausente → modo polling local")
         bot.infinity_polling()
     else:
         webhook_url = f"{WEBHOOK_URL_BASE}/{BOT_TOKEN}"
@@ -216,17 +216,17 @@ if __name__ == '__main__':
         bot.remove_webhook()
         time.sleep(1)
         if bot.set_webhook(url=webhook_url):
-            logging.info("Webhook configurado!")
+            logging.info("Webhook configurado com sucesso!")
         else:
-            logging.error("Falha no webhook!")
+            logging.error("Falha ao configurar webhook!")
 else:
-    # Render (gunicorn)
-    if WEBHOOK_URL_BASE:
+    # Executado pelo gunicorn no Render
+    if WEBHOOK_URL_BASE and BOT_TOKEN:
         webhook_url = f"{WEBHOOK_URL_BASE}/{BOT_TOKEN}"
         logging.info(f"[Render] Configurando webhook: {webhook_url}")
         bot.remove_webhook()
         time.sleep(1)
         if not bot.set_webhook(url=webhook_url):
-            logging.error("FALHA: Webhook não configurado!")
+            logging.error("FALHA CRÍTICA: Webhook não configurado!")
         else:
             logging.info("Webhook ativo no Render! 🚀")
