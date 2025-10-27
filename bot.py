@@ -1,22 +1,17 @@
-import logging
+import telebot
 import json
 import os
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
 
-# Configurações do bot
-import os
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = 565812291  # teu ID do Telegram
-assinantes = {}  # {user_id: {"ativo": True/False, "nome": str}}
+ADMIN_ID = 565812291
+ARQUIVO_ASSINANTES = "assinantes.json"
+
+bot = telebot.TeleBot(BOT_TOKEN)
+assinantes = {}
 free_users = set()
 ultimos_sinais = []
 
-ARQUIVO_ASSINANTES = "assinantes.json"
-
-logging.basicConfig(level=logging.INFO)
-
-# Funções de persistência
+# ---------- Funções de persistência ----------
 def salvar_assinantes():
     with open(ARQUIVO_ASSINANTES, "w") as f:
         json.dump({"assinantes": assinantes, "free_users": list(free_users)}, f)
@@ -29,187 +24,128 @@ def carregar_assinantes():
             assinantes = dados.get("assinantes", {})
             free_users = set(dados.get("free_users", []))
 
-# /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    nome = update.message.from_user.first_name
-
+# ---------- Comandos ----------
+@bot.message_handler(commands=["start"])
+def start(msg):
+    user_id = msg.from_user.id
+    nome = msg.from_user.first_name
     if user_id not in assinantes:
         assinantes[user_id] = {"ativo": False, "nome": nome}
         free_users.add(user_id)
         salvar_assinantes()
 
-    msg = f"🎯 Bem-vindo(a), {nome}!\n\n"
-    msg += "✅ Assinantes recebem a lista completa de sinais.\n"
-    msg += "🆓 Usuários free recebem apenas 2 sinais como prévia.\n"
-    msg += "💰 Plano Premium: R$49/mês.\n\n"
-    msg += "Use /sinais para ver os sinais disponíveis."
-    await update.message.reply_text(msg)
+    texto = (
+        f"🎯 Bem-vindo(a), {nome}!\n\n"
+        "✅ Assinantes recebem a lista completa de sinais.\n"
+        "🆓 Usuários free recebem apenas 2 sinais.\n"
+        "💰 Plano Premium: R$49/mês.\n\n"
+        "Use /sinais para ver os sinais disponíveis."
+    )
+    bot.reply_to(msg, texto)
 
-# /sinais
-async def sinais(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-
+@bot.message_handler(commands=["sinais"])
+def sinais(msg):
+    user_id = msg.from_user.id
     if user_id in assinantes and assinantes[user_id]["ativo"]:
         if ultimos_sinais:
-            await update.message.reply_text("📜 Últimos sinais:\n\n" + "\n".join(ultimos_sinais))
+            bot.reply_to(msg, "📜 Últimos sinais:\n\n" + "\n".join(ultimos_sinais))
         else:
-            await update.message.reply_text("Ainda não há sinais disponíveis.")
+            bot.reply_to(msg, "Ainda não há sinais disponíveis.")
     else:
         if ultimos_sinais:
-            await update.message.reply_text(
-                "🆓 Prévia gratuita (2 sinais):\n\n" +
-                "\n".join(ultimos_sinais[:2]) +
-                "\n\n💡 Assine por R$49,00 para receber a lista completa! Fale com @sandersoncardoso"
+            texto = (
+                "🆓 Prévia gratuita (2 sinais):\n\n"
+                + "\n".join(ultimos_sinais[:2])
+                + "\n\n💡 Assine por R$49,00 para receber a lista completa! Fale com @sandersoncardoso"
             )
+            bot.reply_to(msg, texto)
         else:
-            await update.message.reply_text("Ainda não há sinais disponíveis.")
+            bot.reply_to(msg, "Ainda não há sinais disponíveis.")
 
-# /status
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
+@bot.message_handler(commands=["status"])
+def status(msg):
+    user_id = msg.from_user.id
     if user_id in assinantes and assinantes[user_id]["ativo"]:
-        await update.message.reply_text("✅ Sua assinatura está ativa. Aproveite os sinais!")
+        bot.reply_to(msg, "✅ Sua assinatura está ativa!")
     else:
-        await update.message.reply_text("❌ Você ainda não é assinante. Recebe apenas 2 sinais free.\n💳 Fale com o admin para assinar.")
+        bot.reply_to(msg, "❌ Você ainda não é assinante.\n💳 Fale com o admin para assinar.")
 
-# /ativar
-async def ativar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    if user_id != ADMIN_ID:
-        await update.message.reply_text("🚫 Somente admin pode usar este comando.")
-        return
-
-    if len(context.args) < 1:
-        await update.message.reply_text("Uso: /ativar <user_id>")
+@bot.message_handler(commands=["ativar"])
+def ativar(msg):
+    if msg.from_user.id != ADMIN_ID:
+        bot.reply_to(msg, "🚫 Somente o admin pode usar este comando.")
         return
 
     try:
-        target_id = int(context.args[0])
-        if target_id in assinantes:
-            assinantes[target_id]["ativo"] = True
-        else:
-            assinantes[target_id] = {"ativo": True, "nome": "Usuário Ativo"}
+        target_id = int(msg.text.split()[1])
+        assinantes[target_id] = {"ativo": True, "nome": "Usuário Ativo"}
         free_users.discard(target_id)
         salvar_assinantes()
-        await update.message.reply_text(f"Usuário {target_id} ativado como assinante ✅")
-    except Exception as e:
-        await update.message.reply_text(f"Erro ao ativar: {e}")
+        bot.reply_to(msg, f"Usuário {target_id} ativado ✅")
+    except:
+        bot.reply_to(msg, "Uso: /ativar <user_id>")
 
-# /desativar
-async def desativar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    if user_id != ADMIN_ID:
-        await update.message.reply_text("🚫 Somente admin pode usar este comando.")
-        return
-
-    if len(context.args) < 1:
-        await update.message.reply_text("Uso: /desativar <user_id>")
+@bot.message_handler(commands=["desativar"])
+def desativar(msg):
+    if msg.from_user.id != ADMIN_ID:
+        bot.reply_to(msg, "🚫 Somente o admin pode usar este comando.")
         return
 
     try:
-        target_id = int(context.args[0])
+        target_id = int(msg.text.split()[1])
         if target_id in assinantes:
             assinantes[target_id]["ativo"] = False
             free_users.add(target_id)
             salvar_assinantes()
-            await update.message.reply_text(f"Usuário {target_id} desativado ✅")
+            bot.reply_to(msg, f"Usuário {target_id} desativado ✅")
         else:
-            await update.message.reply_text("Usuário não encontrado.")
-    except Exception as e:
-        await update.message.reply_text(f"Erro ao desativar: {e}")
+            bot.reply_to(msg, "Usuário não encontrado.")
+    except:
+        bot.reply_to(msg, "Uso: /desativar <user_id>")
 
-# /remover
-async def remover(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    if user_id != ADMIN_ID:
-        await update.message.reply_text("🚫 Somente admin pode usar este comando.")
-        return
-
-    if len(context.args) < 1:
-        await update.message.reply_text("Uso: /remover <user_id>")
-        return
-
-    try:
-        target_id = int(context.args[0])
-        if target_id in assinantes:
-            del assinantes[target_id]
-            free_users.discard(target_id)
-            salvar_assinantes()
-            await update.message.reply_text(f"Usuário {target_id} removido ✅")
-        else:
-            await update.message.reply_text("Usuário não encontrado.")
-    except Exception as e:
-        await update.message.reply_text(f"Erro ao remover: {e}")
-
-# /usuarios
-async def usuarios(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    if user_id != ADMIN_ID:
-        await update.message.reply_text("🚫 Somente admin pode usar este comando.")
+@bot.message_handler(commands=["usuarios"])
+def usuarios(msg):
+    if msg.from_user.id != ADMIN_ID:
+        bot.reply_to(msg, "🚫 Somente o admin pode usar este comando.")
         return
 
     if not assinantes:
-        await update.message.reply_text("⚠️ Nenhum usuário registrado ainda.")
+        bot.reply_to(msg, "⚠️ Nenhum usuário registrado.")
         return
 
-    msg = "📜 Lista de usuários:\n\n"
+    texto = "📜 Usuários:\n\n"
     for uid, dados in assinantes.items():
         status = "✅ Assinante" if dados["ativo"] else "🆓 Free"
-        msg += f"ID: {uid} | Nome: {dados['nome']} | Status: {status}\n"
+        texto += f"ID: {uid} | {dados['nome']} | {status}\n"
+    bot.reply_to(msg, texto)
 
-    await update.message.reply_text(msg)
-
-# /sinaisadmin
-async def sinais_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-
-    if user_id != ADMIN_ID:
-        await update.message.reply_text("🚫 Você não tem permissão para usar este comando.")
+@bot.message_handler(commands=["sinaisadmin"])
+def sinais_admin(msg):
+    if msg.from_user.id != ADMIN_ID:
+        bot.reply_to(msg, "🚫 Sem permissão.")
         return
 
-    if not context.args:
-        await update.message.reply_text("Use: /sinaisadmin M5;EURJPY;01:05;CALL M5;EURJPY;02:00;CALL ...")
-        return
-
-    raw_text = update.message.text.partition(' ')[2]
-    lista_sinais = [s.strip() for s in raw_text.replace("\n", " ").split(" ") if s.strip()]
     global ultimos_sinais
-    ultimos_sinais = lista_sinais
+    lista = msg.text.partition(" ")[2].split(";")
+    ultimos_sinais = [s.strip() for s in lista if s.strip()]
 
     for uid, dados in assinantes.items():
         if dados["ativo"]:
             try:
-                await context.bot.send_message(uid, "📡 Lista completa de sinais:\n\n" + "\n".join(lista_sinais))
+                bot.send_message(uid, "📡 Sinais:\n\n" + "\n".join(ultimos_sinais))
             except:
-                logging.warning(f"Não consegui mandar pro {uid}")
+                pass
 
     for uid in free_users:
         try:
-            await context.bot.send_message(uid, "🆓 Prévia gratuita (2 sinais):\n\n" + "\n".join(lista_sinais[:2]) +
-                                           "\n\n💡 Assine para receber todos!")
+            bot.send_message(uid, "🆓 Prévia (2 sinais):\n\n" + "\n".join(ultimos_sinais[:2]))
         except:
-            logging.warning(f"Não consegui mandar pro {uid}")
+            pass
 
-    await update.message.reply_text("✅ Sinais enviados para todos.")
+    bot.reply_to(msg, "✅ Sinais enviados.")
 
-# main
-def main():
-    carregar_assinantes()
-    app = Application.builder().token(BOT_TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("sinais", sinais))
-    app.add_handler(CommandHandler("status", status))
-    app.add_handler(CommandHandler("ativar", ativar))
-    app.add_handler(CommandHandler("desativar", desativar))
-    app.add_handler(CommandHandler("remover", remover))
-    app.add_handler(CommandHandler("usuarios", usuarios))
-    app.add_handler(CommandHandler("sinaisadmin", sinais_admin))
-
-    print("Bot rodando 🚀")
-    app.run_polling()
-
+# ---------- Inicialização ----------
 if __name__ == "__main__":
-    main()
-
+    carregar_assinantes()
+    print("Bot rodando 🚀")
+    bot.infinity_polling()
