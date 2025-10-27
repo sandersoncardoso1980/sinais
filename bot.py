@@ -17,6 +17,15 @@ ARQUIVO_ASSINANTES = "assinantes.json"
 # Configuração do Flask
 # Obtém a porta do Render. Se não estiver em ambiente Render, usa 5000 para teste local.
 PORT = int(os.environ.get('PORT', 5000))
+if BOT_TOKEN:
+    try:
+        bot = telebot.TeleBot(BOT_TOKEN)
+    except Exception as e:
+        logging.error(f"ERRO CRÍTICO: Falha ao inicializar o TeleBot com o token fornecido. Detalhes: {e}")
+        bot = None
+else:
+    logging.error("ERRO CRÍTICO: Variável de ambiente BOT_TOKEN está ausente ou vazia.")
+    bot = None # Define como None se o token estiver ausente
 
 bot = telebot.TeleBot(BOT_TOKEN)
 assinantes = {}
@@ -236,3 +245,4 @@ if __name__ == '__main__':
         # Para teste local, descomente as duas linhas abaixo:
         # threading.Thread(target=lambda: app.run(host="0.0.0.0", port=PORT)).start()
         pass
+
