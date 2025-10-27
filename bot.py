@@ -120,32 +120,42 @@ def usuarios(msg):
     bot.reply_to(msg, texto)
 
 @bot.message_handler(commands=["sinaisadmin"])
+@bot.message_handler(commands=["sinaisadmin"])
 def sinais_admin(msg):
     if msg.from_user.id != ADMIN_ID:
         bot.reply_to(msg, "🚫 Sem permissão.")
         return
 
+    raw_text = msg.text.partition(" ")[2].strip()
+    if not raw_text:
+        bot.reply_to(msg, "Use: /sinaisadmin SINAL1;SINAL2;SINAL3 (separe por ';' ou por quebras de linha)")
+        return
+
+    # Tentamos primeiro por ';', se não existir, por linhas
+    if ";" in raw_text:
+        lista = [s.strip() for s in raw_text.split(";") if s.strip()]
+    else:
+        lista = [s.strip() for s in raw_text.splitlines() if s.strip()]
+
     global ultimos_sinais
-    lista = msg.text.partition(" ")[2].split(";")
-    ultimos_sinais = [s.strip() for s in lista if s.strip()]
+    ultimos_sinais = lista
 
+    # Envia a lista completa para assinantes
     for uid, dados in assinantes.items():
-        if dados["ativo"]:
+        if dados.get("ativo"):
             try:
-                bot.send_message(uid, "📡 Sinais:\n\n" + "\n".join(ultimos_sinais))
-            except:
-                pass
+                bot.send_message(uid, "📡 Lista completa de sinais:\n\n" + "\n".join(lista))
+            except Exception:
+                logging.exception(f"Erro ao enviar sinais para {uid}")
 
+    # Envia prévia para free users (2 sinais)
     for uid in free_users:
         try:
-            bot.send_message(uid, "🆓 Prévia (2 sinais):\n\n" + "\n".join(ultimos_sinais[:2]))
-        except:
-            pass
+            preview = "\n".join(lista[:2]) if len(lista) >= 2 else "\n".join(lista)
+            bot.send_message(uid, "🆓 Prévia gratuita (2 sinais):\n\n" + preview + "\n\n💡 Assine para receber todos!")
+        except Exception:
+            logging.exception(f"Erro ao enviar preview para {uid}")
 
-    bot.reply_to(msg, "✅ Sinais enviados.")
+    bot.reply_to(msg, "✅ Sinais processados e enviados.")
 
-# ---------- Inicialização ----------
-if __name__ == "__main__":
-    carregar_assinantes()
-    print("Bot rodando 🚀")
-    bot.infinity_polling()
+
