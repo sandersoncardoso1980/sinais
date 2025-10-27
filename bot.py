@@ -56,7 +56,7 @@ def sinais(msg):
             texto = (
                 "🆓 Prévia gratuita (2 sinais):\n\n"
                 + "\n".join(ultimos_sinais[:2])
-                + "\n\n💡 Assine por R$49,00 para receber a lista completa! Fale com @sandersoncardoso"
+                + "\n\n💡 Assine por R$49,00 para receber a lista completa! https://buy.stripe.com/eVq7sE9F73Rcb2Ua4Y1gs00"
             )
             bot.reply_to(msg, texto)
         else:
@@ -163,6 +163,7 @@ if __name__ == '__main__':
     print("Bot iniciado e escutando...")
     # Inicia o loop de polling que mantém o bot ativo
     bot.infinity_polling()
+
 
 
 
